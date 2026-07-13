@@ -28,6 +28,10 @@ class StatusResponse(BaseModel):
     indexed_repos: list[RepoInfo]
 
 
+class CheckResponse(BaseModel):
+    changed: bool
+
+
 class PackRequest(BaseModel):
     repo_id: str
     task: str

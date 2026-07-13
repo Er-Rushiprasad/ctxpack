@@ -1,13 +1,15 @@
 import { useEffect, useState } from "react";
-import { ApiError, getStatus, packContext, scanRepo } from "../lib/api";
+import { ApiError, checkRepoChanged, getStatus, packContext, scanRepo } from "../lib/api";
 import type { PackResponse, RepoInfo } from "../types";
 import RepoPicker from "./components/RepoPicker";
 import TokenBudgetPicker from "./components/TokenBudgetPicker";
 import BundlePreview from "./components/BundlePreview";
+import Onboarding from "./components/Onboarding";
 
 type ServerStatus = "checking" | "ok" | "down";
 
 export default function App() {
+  const [onboarded, setOnboarded] = useState<boolean | null>(null);
   const [serverStatus, setServerStatus] = useState<ServerStatus>("checking");
   const [repos, setRepos] = useState<RepoInfo[]>([]);
   const [selectedRepoId, setSelectedRepoId] = useState<string | null>(null);
@@ -15,6 +17,7 @@ export default function App() {
   const [repoPathInput, setRepoPathInput] = useState("");
   const [scanning, setScanning] = useState(false);
   const [scanError, setScanError] = useState<string | null>(null);
+  const [repoChanged, setRepoChanged] = useState(false);
 
   const [task, setTask] = useState("");
   const [tokenBudget, setTokenBudget] = useState(8192);
@@ -22,6 +25,10 @@ export default function App() {
   const [packError, setPackError] = useState<string | null>(null);
   const [packResult, setPackResult] = useState<PackResponse | null>(null);
   const [packVersion, setPackVersion] = useState(0);
+
+  useEffect(() => {
+    chrome.storage.local.get(["onboarded"]).then((res) => setOnboarded(res.onboarded === true));
+  }, []);
 
   useEffect(() => {
     getStatus()
@@ -33,11 +40,29 @@ export default function App() {
       .catch(() => setServerStatus("down"));
   }, []);
 
-  async function handleScan() {
+  useEffect(() => {
+    if (!selectedRepoId) {
+      setRepoChanged(false);
+      return;
+    }
+    let cancelled = false;
+    checkRepoChanged(selectedRepoId)
+      .then((res) => {
+        if (!cancelled) setRepoChanged(res.changed);
+      })
+      .catch(() => {
+        if (!cancelled) setRepoChanged(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedRepoId, repos]);
+
+  async function handleScan(repoPath: string) {
     setScanning(true);
     setScanError(null);
     try {
-      const res = await scanRepo(repoPathInput.trim());
+      const res = await scanRepo(repoPath);
       const newRepo: RepoInfo = {
         repo_id: res.repo_id,
         repo_path: res.repo_path,
@@ -56,6 +81,8 @@ export default function App() {
     }
   }
 
+  const selectedRepo = repos.find((r) => r.repo_id === selectedRepoId) ?? null;
+
   async function handlePack() {
     if (!selectedRepoId) return;
     setPacking(true);
@@ -70,6 +97,18 @@ export default function App() {
     } finally {
       setPacking(false);
     }
+  }
+
+  if (onboarded === null) {
+    return <Shell>{null}</Shell>;
+  }
+
+  if (!onboarded) {
+    return (
+      <Shell>
+        <Onboarding onDismiss={() => chrome.storage.local.set({ onboarded: true }).then(() => setOnboarded(true))} />
+      </Shell>
+    );
   }
 
   if (serverStatus === "checking") {
@@ -98,17 +137,25 @@ export default function App() {
         onSelect={setSelectedRepoId}
         repoPathInput={repoPathInput}
         onRepoPathInputChange={setRepoPathInput}
-        onScan={handleScan}
+        onScan={() => handleScan(repoPathInput.trim())}
         scanning={scanning}
         scanError={scanError}
+        repoChanged={repoChanged}
+        onRescan={selectedRepo ? () => handleScan(selectedRepo.repo_path) : undefined}
       />
 
       <textarea
         className="mt-3 w-full resize-none rounded border border-neutral-700 bg-neutral-900 px-2 py-1.5 text-sm"
         rows={3}
-        placeholder="Describe the task, e.g. fix the auth bug in login flow"
+        placeholder="Describe the task, e.g. fix the auth bug in login flow (Enter to pack, Shift+Enter for a new line)"
         value={task}
         onChange={(e) => setTask(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault();
+            if (selectedRepoId && task.trim() && !packing) handlePack();
+          }
+        }}
       />
 
       <div className="mt-2">

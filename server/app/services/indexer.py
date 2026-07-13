@@ -16,13 +16,29 @@ from pathlib import Path
 from app.core.config import CHROMA_DIR, DATA_DIR, SQLITE_PATH
 from app.services.chunker import chunk_file
 from app.services.embeddings import embed_texts
-from app.services.scanner import scan_repo
+from app.services.scanner import iter_candidate_paths, scan_repo
 
 _CHROMA_ADD_BATCH_SIZE = 500
 
 
 def get_repo_id(repo_path: str) -> str:
     return hashlib.sha1(str(Path(repo_path).resolve()).encode("utf-8")).hexdigest()[:16]
+
+
+def compute_fingerprint(repo_path: str) -> str:
+    """Cheap "has this repo changed since we last scanned it" signal: hash
+    of every candidate file's (path, size, mtime), without reading content —
+    reuses scan_repo's exclusion walk (scanner.iter_candidate_paths) so a
+    change check doesn't require a full re-embed to answer."""
+    root = Path(repo_path).resolve()
+    parts = []
+    for path in sorted(iter_candidate_paths(root)):
+        try:
+            stat = path.stat()
+        except OSError:
+            continue
+        parts.append(f"{path.relative_to(root)}:{stat.st_size}:{int(stat.st_mtime)}")
+    return hashlib.sha1("\n".join(parts).encode("utf-8")).hexdigest()
 
 
 def _connect_sqlite() -> sqlite3.Connection:
@@ -35,10 +51,16 @@ def _connect_sqlite() -> sqlite3.Connection:
             repo_path TEXT NOT NULL,
             last_scanned_at TEXT NOT NULL,
             file_count INTEGER NOT NULL,
-            chunk_count INTEGER NOT NULL
+            chunk_count INTEGER NOT NULL,
+            fingerprint TEXT NOT NULL DEFAULT ''
         )
         """
     )
+    try:
+        # Migration for DBs created before the fingerprint column existed.
+        conn.execute("ALTER TABLE repos ADD COLUMN fingerprint TEXT NOT NULL DEFAULT ''")
+    except sqlite3.OperationalError:
+        pass  # column already exists
     conn.execute(
         """
         CREATE TABLE IF NOT EXISTS chunks (
@@ -75,6 +97,7 @@ def index_repo(repo_path: str) -> IndexResult:
     scanned_files, skipped = scan_repo(repo_path)
     repo_id = get_repo_id(repo_path)
     resolved_path = str(Path(repo_path).resolve())
+    fingerprint = compute_fingerprint(repo_path)
 
     chunk_ids: list[str] = []
     chunk_texts: list[str] = []
@@ -119,15 +142,23 @@ def index_repo(repo_path: str) -> IndexResult:
         )
         conn.execute(
             """
-            INSERT INTO repos (repo_id, repo_path, last_scanned_at, file_count, chunk_count)
-            VALUES (?, ?, ?, ?, ?)
+            INSERT INTO repos (repo_id, repo_path, last_scanned_at, file_count, chunk_count, fingerprint)
+            VALUES (?, ?, ?, ?, ?, ?)
             ON CONFLICT(repo_id) DO UPDATE SET
                 repo_path = excluded.repo_path,
                 last_scanned_at = excluded.last_scanned_at,
                 file_count = excluded.file_count,
-                chunk_count = excluded.chunk_count
+                chunk_count = excluded.chunk_count,
+                fingerprint = excluded.fingerprint
             """,
-            (repo_id, resolved_path, datetime.now(timezone.utc).isoformat(), len(scanned_files), len(chunk_ids)),
+            (
+                repo_id,
+                resolved_path,
+                datetime.now(timezone.utc).isoformat(),
+                len(scanned_files),
+                len(chunk_ids),
+                fingerprint,
+            ),
         )
     conn.close()
 
@@ -159,6 +190,20 @@ def list_repos() -> list[dict]:
         }
         for r in rows
     ]
+
+
+def repo_needs_rescan(repo_id: str) -> bool:
+    conn = _connect_sqlite()
+    try:
+        row = conn.execute(
+            "SELECT repo_path, fingerprint FROM repos WHERE repo_id = ?", (repo_id,)
+        ).fetchone()
+    finally:
+        conn.close()
+    if row is None:
+        raise KeyError(f"no repo indexed with repo_id={repo_id!r}")
+    repo_path, stored_fingerprint = row
+    return compute_fingerprint(repo_path) != stored_fingerprint
 
 
 def get_repo_chunks(repo_id: str) -> dict:

@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException
 
 from app.api.schemas import (
+    CheckResponse,
     PackedFileInfo,
     PackRequest,
     PackResponse,
@@ -9,7 +10,7 @@ from app.api.schemas import (
     ScanResponse,
     StatusResponse,
 )
-from app.services.indexer import index_repo, list_repos
+from app.services.indexer import index_repo, list_repos, repo_needs_rescan
 from app.services.packer import pack_chunks
 from app.services.retriever import hybrid_search
 
@@ -35,6 +36,15 @@ def scan(req: ScanRequest) -> ScanResponse:
         files_skipped=result.files_skipped,
         chunks_indexed=result.chunks_indexed,
     )
+
+
+@router.get("/repos/{repo_id}/check", response_model=CheckResponse)
+def check_repo(repo_id: str) -> CheckResponse:
+    try:
+        changed = repo_needs_rescan(repo_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return CheckResponse(changed=changed)
 
 
 @router.post("/pack", response_model=PackResponse)

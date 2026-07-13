@@ -1,14 +1,26 @@
 import { useMemo, useState } from "react";
 import type { PackResponse } from "../../types";
 import { assembleBundle } from "../../lib/bundle";
+import { injectIntoClaude } from "../../lib/inject";
 
 interface Props {
   result: PackResponse;
 }
 
+const INJECT_FAILURE_MESSAGES: Record<string, string> = {
+  "no-tab": "No claude.ai tab open — copied to clipboard instead. Open claude.ai and paste.",
+  unreachable:
+    "Couldn't reach the claude.ai tab (try refreshing it) — copied to clipboard instead.",
+  "composer-not-found":
+    "Couldn't find the message box on claude.ai (its layout may have changed) — copied to clipboard instead.",
+  "insert-failed": "Couldn't type into the message box — copied to clipboard instead.",
+};
+
 export default function BundlePreview({ result }: Props) {
   const [excluded, setExcluded] = useState<Set<string>>(new Set());
   const [copied, setCopied] = useState(false);
+  const [injecting, setInjecting] = useState(false);
+  const [injectMessage, setInjectMessage] = useState<string | null>(null);
 
   const includedFiles = useMemo(
     () => result.files.filter((f) => !excluded.has(f.path)),
@@ -34,6 +46,24 @@ export default function BundlePreview({ result }: Props) {
     await navigator.clipboard.writeText(bundle);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  }
+
+  async function handleInject() {
+    setInjecting(true);
+    setInjectMessage(null);
+    const bundle = assembleBundle(includedFiles);
+    try {
+      const outcome = await injectIntoClaude(bundle);
+      if (outcome.status === "injected") {
+        setInjectMessage("Injected into claude.ai!");
+      } else {
+        await navigator.clipboard.writeText(bundle);
+        setInjectMessage(INJECT_FAILURE_MESSAGES[outcome.status]);
+      }
+    } finally {
+      setInjecting(false);
+      setTimeout(() => setInjectMessage(null), 4000);
+    }
   }
 
   return (
@@ -73,13 +103,24 @@ export default function BundlePreview({ result }: Props) {
         ))}
       </ul>
 
-      <button
-        className="w-full rounded bg-amber-500 py-1.5 text-sm font-medium text-neutral-950 disabled:opacity-50"
-        disabled={includedFiles.length === 0}
-        onClick={handleCopy}
-      >
-        {copied ? "Copied!" : "Copy to clipboard"}
-      </button>
+      <div className="flex gap-2">
+        <button
+          className="flex-1 rounded bg-amber-500 py-1.5 text-sm font-medium text-neutral-950 disabled:opacity-50"
+          disabled={includedFiles.length === 0}
+          onClick={handleCopy}
+        >
+          {copied ? "Copied!" : "Copy to clipboard"}
+        </button>
+        <button
+          className="flex-1 rounded border border-amber-500 py-1.5 text-sm font-medium text-amber-400 disabled:opacity-50"
+          disabled={includedFiles.length === 0 || injecting}
+          onClick={handleInject}
+        >
+          {injecting ? "Injecting…" : "Inject into claude.ai"}
+        </button>
+      </div>
+
+      {injectMessage && <p className="text-xs text-neutral-400">{injectMessage}</p>}
     </div>
   );
 }

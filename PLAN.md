@@ -149,19 +149,47 @@ Server-only. Test everything via curl/HTTPie or a scratch script — no UI yet.
 
 ## 6. Phase 3 — Page Injection + Polish (Week 3)
 
-- [ ] Content script: detect claude.ai input box, "Inject" button in popup
-      writes the bundle directly into it (user still presses send themselves —
-      never auto-send).
-- [ ] Handle claude.ai DOM changes defensively: feature-detect, fall back to
-      clipboard with a clear message if injection fails.
-- [ ] Re-scan / incremental update flow: "repo changed since last scan"
-      indicator + one-click re-index.
-- [ ] UI polish pass: loading states, keyboard shortcuts (Enter to pack),
-      dark theme (naturally — black/gold optional but resist over-designing v1).
-- [ ] Basic onboarding: first-run screen explaining the companion server,
-      with copy-paste install command.
-- [ ] **Milestone M3:** you use it for a real work session on a real client
-      repo without touching curl or the file explorer.
+- [x] Content script (`extension/src/content/content.ts`, built to a fixed
+      `content.js` via a second Vite config so the manifest can reference a
+      stable path): tries a selector list (ProseMirror contenteditable →
+      generic contenteditable → textarea), inserts text via
+      `execCommand('insertText', ...)` so ProseMirror's own input listeners
+      fire. `BundlePreview.tsx`'s "Inject into claude.ai" button
+      (`src/lib/inject.ts`) sends it a message; the user still presses send
+      themselves.
+- [x] Defensive fallback: every failure mode (no claude.ai tab open, tab
+      unreachable because the content script predates the last extension
+      reload, composer not found, insert failed) copies the bundle to the
+      clipboard automatically and shows a specific message instead of a
+      dead end.
+- [x] Re-scan indicator: `server/app/services/indexer.py` now stores a
+      cheap fingerprint per repo (hash of every candidate file's
+      path/size/mtime, no content read — reuses the scanner's exclusion
+      walk via the new `iter_candidate_paths`) and exposes
+      `GET /repos/{repo_id}/check`. The popup checks this whenever the
+      selected repo changes and shows "⚠ Repo changed since last scan" +
+      a Re-scan button (always available regardless, for one-click
+      re-index).
+- [x] UI polish: Enter-to-pack (Shift+Enter for a newline) in the task
+      textarea; existing loading states kept deliberately plain per this
+      section's "resist over-designing v1" note.
+- [x] Basic onboarding: first-run screen (gated on `chrome.storage.local`)
+      explains the companion-server split and gives the copy-paste
+      `uv run uvicorn ...` command; shown once, dismissal persists.
+- [x] **Milestone M3 — verified as far as I can without your claude.ai
+      session:** used Playwright to load the real built extension and
+      confirm: onboarding shows once and doesn't reappear after dismissal,
+      the changed-since-last-scan badge correctly reflected this repo's real
+      on-disk state (it *had* changed — new Phase 3 files), Enter-to-pack
+      produced a sensibly ranked bundle. For the content script itself, I
+      built a local mock page reproducing the guessed claude.ai composer
+      DOM (`div[contenteditable="true"].ProseMirror`) and confirmed the
+      message-passing + text-insertion mechanism works end-to-end, and that
+      the composer-not-found fallback path correctly returns
+      `{ok: false, reason: "composer-not-found"}`. **What I couldn't verify
+      myself:** whether the real claude.ai page actually still uses that
+      selector — that needs you to try "Inject into claude.ai" for real and
+      tell me if it works or falls back to clipboard.
 
 ## 7. Phase 4 — Dogfooding & Private Beta (Week 4)
 

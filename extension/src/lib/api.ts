@@ -1,4 +1,4 @@
-import type { PackResponse, ScanResponse, StatusResponse } from "../types";
+import type { CheckResponse, PackResponse, ScanResponse, StatusResponse } from "../types";
 
 const SERVER_BASE = "http://127.0.0.1:8000";
 
@@ -36,6 +36,10 @@ export function scanRepo(repoPath: string): Promise<ScanResponse> {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ repo_path: repoPath }),
   });
+}
+
+export function checkRepoChanged(repoId: string): Promise<CheckResponse> {
+  return request<CheckResponse>(`/repos/${encodeURIComponent(repoId)}/check`);
 }
 
 export function packContext(

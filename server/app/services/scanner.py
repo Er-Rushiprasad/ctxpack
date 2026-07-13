@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import fnmatch
 import os
+from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -83,17 +84,16 @@ def _is_gitignored(path: Path, specs: list[tuple[Path, pathspec.PathSpec]]) -> b
     return False
 
 
-def scan_repo(repo_path: str) -> tuple[list[ScannedFile], int]:
-    """Returns (scanned files with readable text content, count of files
-    skipped for any reason)."""
-    root = Path(repo_path).resolve()
-    if not root.is_dir():
-        raise NotADirectoryError(f"{repo_path!r} is not a directory")
+def iter_candidate_paths(root: Path, exclusion_counter: list[int] | None = None) -> Iterator[Path]:
+    """Yields files that pass every exclusion rule (hard-excluded
+    dirs/files, binary extensions, .gitignore) without reading their
+    content — shared by scan_repo (which then reads+chunks them) and the
+    repo-fingerprint check (which only needs cheap stat() calls).
 
+    Pass a single-element list as exclusion_counter to have it incremented
+    for every excluded file, so callers that need that count (scan_repo's
+    user-facing files_skipped stat) don't need a second directory walk."""
     specs = _load_ignore_specs(root)
-    scanned: list[ScannedFile] = []
-    skipped = 0
-
     for dirpath, dirnames, filenames in os.walk(root):
         current = Path(dirpath)
         dirnames[:] = [
@@ -105,47 +105,62 @@ def scan_repo(repo_path: str) -> tuple[list[ScannedFile], int]:
             abs_path = current / filename
             ext = abs_path.suffix.lower()
 
-            if _is_hard_excluded_file(filename):
-                skipped += 1
+            if (
+                _is_hard_excluded_file(filename)
+                or ext in BINARY_EXTENSIONS
+                or _is_gitignored(abs_path, specs)
+            ):
+                if exclusion_counter is not None:
+                    exclusion_counter[0] += 1
                 continue
-            if ext in BINARY_EXTENSIONS:
-                skipped += 1
-                continue
-            if _is_gitignored(abs_path, specs):
-                skipped += 1
-                continue
-            try:
-                if abs_path.stat().st_size > MAX_FILE_SIZE_BYTES:
-                    skipped += 1
-                    continue
-            except OSError:
-                skipped += 1
-                continue
+            yield abs_path
 
-            try:
-                data = abs_path.read_bytes()
-            except OSError:
-                skipped += 1
-                continue
-            if b"\x00" in data:
-                skipped += 1
-                continue
-            try:
-                text = data.decode("utf-8")
-            except UnicodeDecodeError:
-                skipped += 1
-                continue
-            if not text.strip():
-                skipped += 1
-                continue
 
-            scanned.append(
-                ScannedFile(
-                    abs_path=abs_path,
-                    rel_path=str(abs_path.relative_to(root)).replace(os.sep, "/"),
-                    language=LANGUAGE_BY_EXTENSION.get(ext, "text"),
-                    text=text,
-                )
+def scan_repo(repo_path: str) -> tuple[list[ScannedFile], int]:
+    """Returns (scanned files with readable text content, count of files
+    skipped for any reason)."""
+    root = Path(repo_path).resolve()
+    if not root.is_dir():
+        raise NotADirectoryError(f"{repo_path!r} is not a directory")
+
+    scanned: list[ScannedFile] = []
+    exclusion_counter = [0]
+    skipped = 0
+
+    for abs_path in iter_candidate_paths(root, exclusion_counter):
+        ext = abs_path.suffix.lower()
+        try:
+            if abs_path.stat().st_size > MAX_FILE_SIZE_BYTES:
+                skipped += 1
+                continue
+        except OSError:
+            skipped += 1
+            continue
+
+        try:
+            data = abs_path.read_bytes()
+        except OSError:
+            skipped += 1
+            continue
+        if b"\x00" in data:
+            skipped += 1
+            continue
+        try:
+            text = data.decode("utf-8")
+        except UnicodeDecodeError:
+            skipped += 1
+            continue
+        if not text.strip():
+            skipped += 1
+            continue
+
+        scanned.append(
+            ScannedFile(
+                abs_path=abs_path,
+                rel_path=str(abs_path.relative_to(root)).replace(os.sep, "/"),
+                language=LANGUAGE_BY_EXTENSION.get(ext, "text"),
+                text=text,
             )
+        )
 
-    return scanned, skipped
+    return scanned, skipped + exclusion_counter[0]

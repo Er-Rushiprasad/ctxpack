@@ -6,7 +6,18 @@
   "action": {
     "default_popup": "popup.html"
   },
+  "permissions": [
+    "storage"
+  ],
   "host_permissions": [
-    "http://127.0.0.1:8000/*"
+    "http://127.0.0.1:8000/*",
+    "https://claude.ai/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["https://claude.ai/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
   ]
 }

@@ -11,6 +11,10 @@ export interface StatusResponse {
   indexed_repos: RepoInfo[];
 }
 
+export interface CheckResponse {
+  changed: boolean;
+}
+
 export interface ScanResponse {
   repo_id: string;
   repo_path: string;
