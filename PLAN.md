@@ -59,12 +59,15 @@ Purpose: kill the riskiest unknowns before writing real code.
       **needs manual verification against the live claude.ai DOM** (see
       `extension/README.md` Spike 3 section) before this checkbox is truly
       done.
-- [ ] **Spike 1 — local embeddings:** run sentence-transformers locally,
-      embed ~100 code chunks, measure speed + RAM on your machine.
-      Decision gate: if too slow (>5 min for medium repo), reconsider
-      API embeddings before Phase 1. Not started — needs a real repo's worth
-      of chunks and a decision on which sentence-transformers model to try
-      first.
+- [x] **Spike 1 — local embeddings:** `server/scripts/spike_embeddings.py`
+      embeds 100 real code chunks with `sentence-transformers/all-MiniLM-L6-v2`.
+      Results (warm model load, this machine): load 15.5s, encode 100 chunks
+      in 3.1s (~32 chunks/s), RSS ~500MB. Extrapolated to a 500-file repo
+      (~4000 chunks): **~2.3 min**, well under the 5-min gate.
+      **Decision: local embeddings via `all-MiniLM-L6-v2` are viable for
+      v1** — no need for API embeddings yet. Revisit only if real-world
+      chunk counts run much higher than the ~8 chunks/file estimate used
+      here.
 
 > If all 3 spikes pass, architecture is validated. If any fail, update
 > ARCHI.md before proceeding — do not build around a broken assumption.

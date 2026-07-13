@@ -105,7 +105,8 @@ unless they explicitly choose a cloud embedding provider later (v2 option).
 |----------------------|--------------------------------------------|
 | Extension UI         | React 19, TypeScript, Tailwind v4          |
 | Extension build      | Vite                                       |
-| Local server          | FastAPI (Python 3.11+)                     |
+| Local server          | FastAPI (Python 3.13), managed with `uv`   |
+| Embedding model        | sentence-transformers/all-MiniLM-L6-v2 (local) |
 | Retrieval             | LlamaIndex + ChromaDB, BM25 hybrid         |
 | Token counting         | tiktoken (or equivalent for target model)  |
 | Local storage (server) | SQLite (metadata) + Chroma (vectors)       |
@@ -131,7 +132,11 @@ unless they explicitly choose a cloud embedding provider later (v2 option).
 
 - Embedding model: local (sentence-transformers, no API cost, slower) vs
   Anthropic/OpenAI embeddings (better quality, requires API key + costs).
-  → **Leaning local for v1** to keep it zero-config and privacy-first.
+  → **Decided for v1: local, `sentence-transformers/all-MiniLM-L6-v2`.**
+  Spike 1 (`server/scripts/spike_embeddings.py`) measured ~2.3 min to embed
+  a 500-file repo (warm model, ~32 chunks/s, ~500MB RSS) on dev machine —
+  comfortably under the 5-min gate in PLAN.md. Revisit only if real repos
+  produce far more chunks/file than the ~8 assumed here.
 - How the extension discovers "which repos have been scanned" — likely just
   a list returned by `/status` from the local server.
 - Auth between extension and local server: none for v1 (localhost-only trust

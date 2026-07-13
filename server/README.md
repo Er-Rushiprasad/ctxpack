@@ -2,6 +2,12 @@
 
 Managed with [uv](https://docs.astral.sh/uv/). Python 3.13 (see `.python-version`).
 
+## Spikes
+
+`scripts/spike_embeddings.py` — Phase 0 Spike 1, measures local embedding
+speed/RAM (`uv run python scripts/spike_embeddings.py`). Results recorded in
+`../PLAN.md` and `../ARCHI.md`.
+
 ```bash
 cd server
 uv sync                     # install deps into server/.venv
