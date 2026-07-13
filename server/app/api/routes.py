@@ -49,19 +49,20 @@ def check_repo(repo_id: str) -> CheckResponse:
 
 @router.post("/pack", response_model=PackResponse)
 def pack(req: PackRequest) -> PackResponse:
-    ranked_chunks = hybrid_search(req.repo_id, req.task)
-    if not ranked_chunks:
+    search_result = hybrid_search(req.repo_id, req.task)
+    if not search_result.chunks:
         raise HTTPException(
             status_code=404,
             detail=f"no indexed chunks for repo_id={req.repo_id!r} — scan it first via /scan",
         )
 
-    result = pack_chunks(ranked_chunks, req.token_budget)
+    result = pack_chunks(search_result.chunks, req.token_budget)
     return PackResponse(
         bundle=result.bundle,
         token_count=result.token_count,
         token_budget=req.token_budget,
         task=req.task,
+        confidence=search_result.confidence,
         files=[
             PackedFileInfo(
                 path=pf.path,

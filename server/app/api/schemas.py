@@ -1,3 +1,5 @@
+from typing import Literal
+
 from pydantic import BaseModel
 
 from app.core.config import DEFAULT_TOKEN_BUDGET
@@ -51,4 +53,5 @@ class PackResponse(BaseModel):
     token_count: int
     token_budget: int
     task: str
+    confidence: Literal["low", "normal"]
     files: list[PackedFileInfo]
