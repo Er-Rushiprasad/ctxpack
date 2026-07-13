@@ -116,18 +116,36 @@ Server-only. Test everything via curl/HTTPie or a scratch script — no UI yet.
 
 ## 5. Phase 2 — Extension UI + Clipboard Flow (Week 2)
 
-- [ ] Vite + React 19 + TS + Tailwind v4 extension scaffold (MV3).
-- [ ] Popup UI: server connection status, repo selector (from `/status`),
-      task input, token budget selector (e.g. 8k / 32k / 100k presets),
-      "Pack Context" button.
-- [ ] Bundle preview screen: ranked file list with relevance scores, per-file
-      include/exclude toggles, live token count that updates on toggle.
-- [ ] Copy-to-clipboard with success feedback.
-- [ ] Empty/error states: server not running (show start instructions),
-      repo not scanned yet, zero results.
-- [ ] **Milestone M2:** full flow works end-to-end via clipboard —
-      scan → describe task → preview → tweak → copy → paste into claude.ai
-      manually.
+- [x] Vite + React 19 + TS + Tailwind v4 extension scaffold (MV3), in
+      `extension/`: `vite.config.ts` builds `popup.html` to `dist/`,
+      `public/manifest.json` copied through verbatim. No content script yet
+      (Phase 0's spike files were removed — see ARCHI.md §4.1).
+- [x] Popup UI (`extension/src/popup/`): `/status` check on mount,
+      `RepoPicker` (select a previously-scanned repo or scan a new path),
+      task textarea, `TokenBudgetPicker` (8k/32k/100k presets), "Pack
+      Context" button.
+- [x] Bundle preview (`BundlePreview.tsx`): ranked file list (path + token
+      count), per-file checkbox toggle, live-updating total token count —
+      verified exact (excluding a 528-token file dropped the total from
+      8,076 to 7,548).
+- [x] Copy-to-clipboard (`lib/bundle.ts` reassembles client-side from each
+      file's `content`, matching `packer.py`'s `_assemble` format exactly)
+      with "Copied!" feedback.
+- [x] Empty/error states: server-down shows start instructions; zero
+      repos shows just the scan input (no dropdown); `/pack` 404 (repo not
+      scanned) surfaces the server's own error detail text.
+- [x] **Milestone M2 — passed, verified for real (not just build success):**
+      used Playwright to load the actual built `extension/dist/` into a real
+      Chromium instance (`--load-extension`) against the real running
+      server. Confirmed: popup renders, repo select + scan-new-path both
+      work, Pack Context returns a sensibly ranked bundle, toggling a file
+      off updates the live token count by exactly that file's token count,
+      Copy to clipboard produces the correctly-reassembled bundle text
+      (verified via `navigator.clipboard.readText()`), and the server-down
+      state renders the right instructions. The one piece still needing a
+      human: actually pasting the copied text into claude.ai (trivial once
+      clipboard content is confirmed correct) — and content-script
+      injection is Phase 3's job anyway.
 
 ## 6. Phase 3 — Page Injection + Polish (Week 3)
 

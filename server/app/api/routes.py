@@ -58,6 +58,7 @@ def pack(req: PackRequest) -> PackResponse:
                 chunk_count=len(pf.chunks),
                 token_count=pf.token_count,
                 relevance_score=pf.relevance_score,
+                content=pf.content,
             )
             for pf in result.files
         ],

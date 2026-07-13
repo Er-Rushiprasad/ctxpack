@@ -39,6 +39,7 @@ class PackedFileInfo(BaseModel):
     chunk_count: int
     token_count: int
     relevance_score: float
+    content: str
 
 
 class PackResponse(BaseModel):

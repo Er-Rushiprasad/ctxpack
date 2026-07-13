@@ -1,0 +1,12 @@
+{
+  "manifest_version": 3,
+  "name": "Context Packer",
+  "version": "0.1.0",
+  "description": "Pack the most relevant files from a local repo into a token-budgeted bundle for claude.ai.",
+  "action": {
+    "default_popup": "popup.html"
+  },
+  "host_permissions": [
+    "http://127.0.0.1:8000/*"
+  ]
+}

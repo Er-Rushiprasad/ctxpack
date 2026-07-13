@@ -1,33 +1,45 @@
 extension
 
-Phase 0 Spike 2 only: a bare (no build step) MV3 extension that pings the
-local companion server, to confirm `fetch()` from an extension context can
-reach `127.0.0.1` without MV3/CORS blocking it. The real Vite + React + TS
-scaffold replaces these files in Phase 2.
+Chrome extension (MV3): React 19 + TypeScript + Tailwind v4, bundled with Vite.
 
-## Try it
+## Build & load
 
-1. Start the server (see `../server/README.md`).
-2. Open `chrome://extensions`, enable "Developer mode".
-3. "Load unpacked" → select this `extension/` folder.
-4. Click the extension icon → "Ping local server" → should show
-   `{"status": "ok", "indexed_repos": []}`.
-
-If the fetch fails with a CORS error, check `server/app/main.py`'s
-`CORSMiddleware` config and that the server is actually running on port 8000.
-
-## Spike 3 — claude.ai injection
-
-`content_spike.js` is loaded on any `https://claude.ai/*` page (after
-reloading the extension in `chrome://extensions`, refresh the claude.ai tab
-too). Open devtools console on a claude.ai chat page and run:
-
-```js
-contextPackerSpike()
+```bash
+cd extension
+npm install
+npm run build       # outputs to dist/
 ```
 
-It should type "hello world" into the message composer. The selector list is
-a best guess (`div[contenteditable="true"].ProseMirror`) — if it doesn't
-find the box, inspect the composer element and update
-`findClaudeInput()` in `content_spike.js`, then note the real selector back
-in `ARCHI.md`.
+Then in Chrome: `chrome://extensions` → enable "Developer mode" → "Load
+unpacked" → select `extension/dist/` (not `extension/` itself — the built
+output, including `manifest.json`, lives in `dist/`).
+
+`npm run dev` rebuilds on file changes (`vite build --watch`); reload the
+extension in `chrome://extensions` after each rebuild to pick up changes —
+there's no live-reload for MV3 popups in this setup.
+
+## What's here (Phase 2)
+
+- Popup UI (`src/popup/`): checks `/status`, lets you scan a new repo path or
+  pick a previously-scanned one, enter a task description, choose a token
+  budget preset, and pack. The bundle preview lists ranked files with a
+  live-updating token count as you toggle files in/out, then copies the
+  assembled bundle to the clipboard.
+- `src/lib/api.ts` — fetch wrapper for the local server (`127.0.0.1:8000`).
+- `src/lib/bundle.ts` — reassembles the bundle client-side from the
+  per-file `content` the server returns, so toggling files doesn't need a
+  round trip to `/pack`. Must stay in sync with
+  `server/app/services/packer.py`'s `_assemble` format if that ever changes.
+
+Content-script injection into claude.ai (Phase 3) isn't wired up yet — the
+Phase 0 spike for it was removed when this real scaffold replaced the flat
+`manifest.json`/`popup.html`/`popup.js` files; the working selector
+(`div[contenteditable="true"].ProseMirror`) is still noted in `ARCHI.md` for
+when Phase 3 rebuilds it properly.
+
+## Manual check (can't be automated from here)
+
+With the server running (`cd ../server && uv run uvicorn app.main:app --port
+8000`), open the popup, scan a real repo path, type a task, pick a budget,
+and confirm Pack Context returns a sensible ranked list and Copy to
+clipboard actually copies.

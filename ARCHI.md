@@ -58,14 +58,33 @@ unless they explicitly choose a cloud embedding provider later (v2 option).
 ## 4. Components
 
 ### 4.1 Chrome Extension
-- **Stack:** React 19, TypeScript, Tailwind v4, Manifest V3.
-- **Responsibilities:**
-  - Popup/sidebar UI: pick a repo (already scanned by companion server),
-    enter task description, trigger pack request.
-  - Content script: detects claude.ai / chatgpt.com input box, injects
-    assembled bundle text on user action.
-  - Talks to local server via `fetch` (CORS enabled on server for the
-    extension's origin only).
+- **Stack:** React 19, TypeScript, Tailwind v4, Manifest V3, bundled with
+  Vite (`extension/vite.config.ts`, `@tailwindcss/vite` plugin — Tailwind v4
+  is CSS-first, see `src/index.css`).
+- **Build layout:** `vite build` outputs `extension/dist/` (load this
+  directory as the unpacked extension, not `extension/` itself).
+  `public/manifest.json` is copied through by Vite's default `publicDir`
+  behavior; `popup.html` at the extension root is the sole entry point for
+  now. Root-relative asset paths (`/assets/...`) in the built HTML resolve
+  correctly under `chrome-extension://<id>/` since that's the page's origin.
+- **Responsibilities (current, Phase 2):**
+  - Popup (`src/popup/`): checks `/status`, lets the user scan a new repo
+    path or pick a previously-scanned one (`RepoPicker.tsx`), enter a task
+    description, choose a token budget preset (`TokenBudgetPicker.tsx`), and
+    pack. `BundlePreview.tsx` shows the ranked file list with per-file
+    include/exclude toggles; toggling recomputes the token count and
+    reassembles the copy-to-clipboard text entirely client-side using each
+    file's `content` field from `/pack` (`src/lib/bundle.ts`) — no round
+    trip needed. `src/lib/api.ts` is the fetch wrapper (surfaces FastAPI's
+    `detail` field on errors).
+  - Content script (Phase 3, not yet wired): will detect claude.ai's input
+    box and inject the assembled bundle on user action. Phase 0's spike
+    (`content_spike.js`) validated a selector
+    (`div[contenteditable="true"].ProseMirror`) and was removed when this
+    real scaffold replaced the flat manifest/popup files — Phase 3 rebuilds
+    it properly in `src/content/`.
+  - Talks to local server via `fetch` (CORS enabled server-side for
+    `chrome-extension://.*` origins).
 - **No direct file system access.** No API keys stored in extension storage
   beyond user-provided ones (encrypted via `chrome.storage.session` where
   possible, never `localStorage`).
@@ -133,10 +152,11 @@ unless they explicitly choose a cloud embedding provider later (v2 option).
 
 - [x] Local server: `/scan` and `/pack` endpoints working end-to-end on a
       single repo (Phase 1 / Milestone M1, see PLAN.md §4).
-- [ ] Extension popup: repo path input, task input, "Pack Context" button.
-- [ ] Bundle preview with token count and per-file toggle (include/exclude).
-- [ ] Copy-to-clipboard.
-- [ ] Manual injection into claude.ai textarea (content script).
+- [x] Extension popup: repo path input, task input, "Pack Context" button
+      (Phase 2 / Milestone M2, see PLAN.md §5).
+- [x] Bundle preview with token count and per-file toggle (include/exclude).
+- [x] Copy-to-clipboard.
+- [ ] Manual injection into claude.ai textarea (content script) — Phase 3.
 
 ### Explicitly out of scope for v1
 - ChatGPT injection (add after claude.ai flow is solid).

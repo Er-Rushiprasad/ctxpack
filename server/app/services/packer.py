@@ -24,8 +24,15 @@ class PackedFile:
     chunks: list[RetrievedChunk] = field(default_factory=list)
 
     @property
+    def content(self) -> str:
+        """This file's assembled blocks, in line order — the extension uses
+        this to rebuild the bundle client-side when the user toggles files
+        in/out of the preview, without a round trip to /pack."""
+        return "".join(_chunk_block(c) for c in self.chunks)
+
+    @property
     def token_count(self) -> int:
-        return sum(count_tokens(_chunk_block(c)) for c in self.chunks)
+        return count_tokens(self.content)
 
     @property
     def relevance_score(self) -> float:
@@ -54,7 +61,7 @@ def _assemble(included: list[RetrievedChunk]) -> str:
     ordered_files = sorted(files.values(), key=lambda pf: pf.relevance_score, reverse=True)
 
     tree_summary = "\n".join(f"- {pf.path}" for pf in ordered_files)
-    body = "\n".join(_chunk_block(c) for pf in ordered_files for c in pf.chunks)
+    body = "\n".join(pf.content for pf in ordered_files)
     return f"# Files included ({len(ordered_files)})\n{tree_summary}\n\n{body}"
 
 
