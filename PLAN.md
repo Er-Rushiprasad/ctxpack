@@ -76,21 +76,43 @@ Purpose: kill the riskiest unknowns before writing real code.
 
 Server-only. Test everything via curl/HTTPie or a scratch script — no UI yet.
 
-- [ ] FastAPI skeleton: `app/api`, `app/core`, `app/services`, Pydantic
-      models for all request/response shapes.
-- [ ] Repo scanner: walk directory, respect `.gitignore`, skip binaries,
-      node_modules, lockfiles, .env files (hard exclusion — never index secrets).
-- [ ] Chunker: function/class-aware for common languages (Python, TS/JS),
-      fixed-size + overlap fallback for everything else.
-- [ ] Indexing: chunks → embeddings → ChromaDB; metadata (path, language,
-      line range) → SQLite.
-- [ ] Hybrid retrieval: BM25 + vector scores, merged ranking (reuse existing
-      hybrid-scoring pattern from prior RAG work).
-- [ ] Packer: greedy selection under token budget (tiktoken), file-path
-      headers, file-tree summary at bundle top.
-- [ ] Endpoints live: `POST /scan`, `POST /pack`, `GET /status`.
-- [ ] **Milestone M1:** `curl` a task description → get a sensible, correctly
-      budgeted bundle from a real repo (test on the Tailr repo itself).
+- [x] FastAPI skeleton: `app/api` (routes.py, schemas.py), `app/core`
+      (config.py — hard-exclusion lists, model/tokenizer names, budget
+      defaults), `app/services` (scanner, chunker, embeddings, indexer,
+      retriever, packer). Pydantic models for all request/response shapes in
+      `app/api/schemas.py`.
+- [x] Repo scanner (`app/services/scanner.py`): walks the tree, prunes
+      hard-excluded dirs (`.git`, `node_modules`, `.venv`, `dist`, etc.) and
+      files (`.env*`, keys/certs, lockfiles, `.min.js`, `.map`) regardless of
+      `.gitignore`, plus respects nested `.gitignore` files, binary
+      extensions, oversized files (>1MB), and non-UTF-8/empty content.
+      Covered by `server/tests/test_scanner.py` (3 tests, all passing) per
+      the risk table's "add tests for it" note.
+- [x] Chunker (`app/services/chunker.py`): regex heuristic on top-level
+      `def`/`class` lines for Python, top-level function/class/exported-arrow
+      patterns for JS/TS; fixed-size (40 lines, 10 overlap) fallback
+      otherwise. Not full AST/tree-sitter parsing — see ARCHI.md §4.3.
+- [x] Indexing (`app/services/indexer.py`): chunks → embeddings
+      (`sentence-transformers/all-MiniLM-L6-v2`) → one shared Chroma
+      collection tagged by `repo_id`; repo registry + chunk metadata → SQLite
+      (`server/.data/`, gitignored).
+- [x] Hybrid retrieval (`app/services/retriever.py`): ChromaDB vector search
+      + `rank-bm25` keyword search, merged via reciprocal rank fusion
+      (no LlamaIndex — see ARCHI.md §4.3 for why the plan changed here).
+- [x] Packer (`app/services/packer.py`): greedy by fused relevance score,
+      re-measuring the whole assembled bundle (tiktoken `cl100k_base`) each
+      step so the final bundle never exceeds `token_budget`; file-tree
+      summary + per-file `--- path (lines a-b) ---` blocks.
+- [x] Endpoints live: `POST /scan`, `POST /pack`, `GET /status`
+      (`app/api/routes.py`).
+- [x] **Milestone M1 — passed:** scanned this repo itself (25 files, 83
+      chunks, ~25s including one-time model warmup) via `curl POST /scan`,
+      then `curl POST /pack` with the task "how does the /pack endpoint turn
+      retrieved chunks into a token-budgeted bundle" returned a sensibly
+      ranked, correctly budgeted bundle (3999/4000 tokens; top files were
+      `packer.py`, `routes.py`, `schemas.py`) in 0.4s — well under the 5s
+      goal in §1. (Note: "the Tailr repo" in the original plan text was this
+      repo itself, not a separate project.)
 
 ## 5. Phase 2 — Extension UI + Clipboard Flow (Week 2)
 

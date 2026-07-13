@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-from typing import Optional
+
+from app.api.routes import router
 
 app = FastAPI(title="Context Packer - Local Companion Server")
 
@@ -15,28 +15,4 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
-class ScanRequest(BaseModel):
-    repo_path: str
-
-
-class PackRequest(BaseModel):
-    task: str
-    token_budget: Optional[int] = 8192
-
-
-@app.get("/status")
-async def status():
-    return {"status": "ok", "indexed_repos": []}
-
-
-@app.post("/scan")
-async def scan(req: ScanRequest):
-    # Placeholder: index the repo at `req.repo_path` in future work
-    return {"status": "scanning", "repo_path": req.repo_path, "chunks_indexed": 0}
-
-
-@app.post("/pack")
-async def pack(req: PackRequest):
-    # Placeholder: return an empty bundle; real packing will be implemented in Phase 1
-    return {"bundle": "", "token_count": 0, "token_budget": req.token_budget, "task": req.task}
+app.include_router(router)
