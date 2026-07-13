@@ -91,11 +91,11 @@ export default function BundlePreview({ result }: Props) {
         </span>
       </div>
 
-      <ul className="max-h-56 space-y-1 overflow-y-auto rounded border border-neutral-800">
+      <ul className="glass-field max-h-80 space-y-1 overflow-y-auto rounded-lg">
         {result.files.map((f) => (
           <li
             key={f.path}
-            className="flex items-center gap-2 border-b border-neutral-800 px-2 py-1 last:border-b-0"
+            className="flex items-center gap-2 border-b border-white/5 px-2 py-1 last:border-b-0"
           >
             <input
               type="checkbox"
@@ -107,7 +107,7 @@ export default function BundlePreview({ result }: Props) {
               {f.path}
             </span>
             <span
-              className="h-1.5 w-10 shrink-0 overflow-hidden rounded-full bg-neutral-800"
+              className="h-1.5 w-10 shrink-0 overflow-hidden rounded-full bg-white/10"
               title={`relevance score: ${f.relevance_score.toFixed(4)}`}
             >
               <span
@@ -129,14 +129,14 @@ export default function BundlePreview({ result }: Props) {
 
       <div className="flex gap-2">
         <button
-          className="flex-1 rounded bg-amber-500 py-1.5 text-sm font-medium text-neutral-950 disabled:opacity-50"
+          className="flex-1 rounded-lg bg-amber-500 py-1.5 text-sm font-medium text-neutral-950 shadow-lg shadow-amber-500/20 transition hover:bg-amber-400 disabled:opacity-50 disabled:shadow-none"
           disabled={includedFiles.length === 0}
           onClick={handleCopy}
         >
           {copied ? "Copied!" : "Copy to clipboard"}
         </button>
         <button
-          className="flex-1 rounded border border-amber-500 py-1.5 text-sm font-medium text-amber-400 disabled:opacity-50"
+          className="flex-1 rounded-lg border border-amber-500/50 bg-white/5 py-1.5 text-sm font-medium text-amber-400 backdrop-blur-md transition hover:bg-amber-500/10 disabled:opacity-50"
           disabled={includedFiles.length === 0 || injecting}
           onClick={handleInject}
         >

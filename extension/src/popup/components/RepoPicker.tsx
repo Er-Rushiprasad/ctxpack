@@ -29,7 +29,7 @@ export default function RepoPicker({
     <div className="space-y-2">
       {repos.length > 0 && (
         <select
-          className="w-full rounded border border-neutral-700 bg-neutral-900 px-2 py-1.5 text-sm"
+          className="glass-field w-full rounded-lg px-2 py-1.5 text-sm text-neutral-100"
           value={selectedRepoId ?? ""}
           onChange={(e) => onSelect(e.target.value)}
         >
@@ -52,7 +52,7 @@ export default function RepoPicker({
             <span className="text-neutral-500">Up to date</span>
           )}
           <button
-            className={`rounded px-2 py-0.5 font-medium ${
+            className={`rounded-md px-2 py-0.5 font-medium transition ${
               repoChanged ? "bg-amber-500 text-neutral-950" : "text-neutral-400 hover:text-neutral-200"
             }`}
             disabled={scanning}
@@ -65,7 +65,7 @@ export default function RepoPicker({
 
       <div className="flex gap-2">
         <input
-          className="min-w-0 flex-1 rounded border border-neutral-700 bg-neutral-900 px-2 py-1.5 text-sm"
+          className="glass-field min-w-0 flex-1 rounded-lg px-2 py-1.5 text-sm text-neutral-100"
           placeholder="C:\path\to\repo"
           value={repoPathInput}
           onChange={(e) => onRepoPathInputChange(e.target.value)}
@@ -74,7 +74,7 @@ export default function RepoPicker({
           }}
         />
         <button
-          className="shrink-0 rounded bg-amber-500 px-3 py-1.5 text-sm font-medium text-neutral-950 disabled:opacity-50"
+          className="shrink-0 rounded-lg bg-amber-500 px-3 py-1.5 text-sm font-medium text-neutral-950 shadow-lg shadow-amber-500/20 transition hover:bg-amber-400 disabled:opacity-50 disabled:shadow-none"
           disabled={!repoPathInput.trim() || scanning}
           onClick={onScan}
         >

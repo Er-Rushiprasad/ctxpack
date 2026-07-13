@@ -19,12 +19,12 @@ export default function Onboarding({ onDismiss }: Props) {
       </p>
       <div>
         <p className="mb-1 text-xs text-neutral-400">Start it once per work session, from the repo's `server/` folder:</p>
-        <pre className="overflow-x-auto rounded bg-neutral-900 p-2 text-[11px] text-neutral-300">
+        <pre className="glass-field overflow-x-auto rounded-lg p-2 text-[11px] text-neutral-300">
           uv run uvicorn app.main:app --port 8000
         </pre>
       </div>
       <button
-        className="w-full rounded bg-amber-500 py-1.5 text-sm font-semibold text-neutral-950"
+        className="w-full rounded-lg bg-amber-500 py-1.5 text-sm font-semibold text-neutral-950 shadow-lg shadow-amber-500/20 transition hover:bg-amber-400"
         onClick={onDismiss}
       >
         Got it, let's go

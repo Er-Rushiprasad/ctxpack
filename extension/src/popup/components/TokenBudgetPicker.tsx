@@ -25,10 +25,10 @@ export default function TokenBudgetPicker({ value, onChange }: Props) {
       {TOKEN_BUDGET_PRESETS.map((preset) => (
         <button
           key={preset.value}
-          className={`flex-1 rounded border px-2 py-1 text-xs font-medium ${
+          className={`flex-1 rounded-lg border px-2 py-1 text-xs font-medium transition ${
             value === preset.value
-              ? "border-amber-500 bg-amber-500/10 text-amber-400"
-              : "border-neutral-700 bg-neutral-900 text-neutral-300"
+              ? "border-amber-400/60 bg-amber-500/15 text-amber-300 shadow-inner shadow-amber-500/10"
+              : "glass-field border-transparent text-neutral-300"
           }`}
           onClick={() => onChange(preset.value)}
         >
@@ -38,7 +38,7 @@ export default function TokenBudgetPicker({ value, onChange }: Props) {
       <input
         type="number"
         min={1}
-        className="w-20 rounded border border-neutral-700 bg-neutral-900 px-2 py-1 text-xs text-neutral-300"
+        className="glass-field w-20 rounded-lg px-2 py-1 text-xs text-neutral-300"
         placeholder="custom"
         value={customInput}
         onChange={(e) => setCustomInput(e.target.value)}

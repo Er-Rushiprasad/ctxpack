@@ -1,1 +1,48 @@
 @import "tailwindcss";
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+}
+
+body {
+  background:
+    radial-gradient(circle at 12% -15%, rgba(245, 158, 11, 0.32), transparent 55%),
+    radial-gradient(circle at 105% 5%, rgba(217, 119, 6, 0.16), transparent 45%),
+    radial-gradient(circle at 50% 130%, rgba(120, 53, 15, 0.28), transparent 60%),
+    #0a0a0c;
+}
+
+.glass-panel {
+  background: rgba(255, 255, 255, 0.045);
+  backdrop-filter: blur(22px);
+  -webkit-backdrop-filter: blur(22px);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.glass-field {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.glass-field:focus,
+.glass-field:focus-visible {
+  outline: none;
+  border-color: rgba(245, 158, 11, 0.55);
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.glass-field::placeholder {
+  color: rgba(212, 212, 216, 0.45);
+}

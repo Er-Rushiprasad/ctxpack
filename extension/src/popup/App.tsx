@@ -122,7 +122,7 @@ export default function App() {
         <p className="mt-2 text-xs text-neutral-400">
           Start it from <code className="text-neutral-300">server/</code>:
         </p>
-        <pre className="mt-1 overflow-x-auto rounded bg-neutral-900 p-2 text-[11px] text-neutral-300">
+        <pre className="glass-field mt-1 overflow-x-auto rounded-lg p-2 text-[11px] text-neutral-300">
           uv run uvicorn app.main:app --port 8000
         </pre>
       </Shell>
@@ -145,7 +145,7 @@ export default function App() {
       />
 
       <textarea
-        className="mt-3 w-full resize-none rounded border border-neutral-700 bg-neutral-900 px-2 py-1.5 text-sm"
+        className="glass-field mt-3 w-full resize-none rounded-lg px-2 py-1.5 text-sm text-neutral-100"
         rows={3}
         placeholder="Describe the task, e.g. fix the auth bug in login flow (Enter to pack, Shift+Enter for a new line)"
         value={task}
@@ -163,7 +163,7 @@ export default function App() {
       </div>
 
       <button
-        className="mt-3 w-full rounded bg-amber-500 py-1.5 text-sm font-semibold text-neutral-950 disabled:opacity-50"
+        className="mt-3 w-full rounded-lg bg-amber-500 py-1.5 text-sm font-semibold text-neutral-950 shadow-lg shadow-amber-500/20 transition hover:bg-amber-400 disabled:opacity-50 disabled:shadow-none"
         disabled={!selectedRepoId || !task.trim() || packing}
         onClick={handlePack}
       >
@@ -182,5 +182,15 @@ export default function App() {
 }
 
 function Shell({ children }: { children: React.ReactNode }) {
-  return <div className="w-[380px] p-3">{children}</div>;
+  return (
+    <div className="w-[440px] py-3 pl-2 pr-3">
+      <div className="glass-panel flex max-h-[560px] flex-col overflow-hidden rounded-2xl">
+        <header className="z-10 flex shrink-0 items-center gap-2 border-b border-white/10 px-4 py-3 shadow-[0_4px_16px_-6px_rgba(0,0,0,0.5)]">
+          <img src="/icons/icon48.png" alt="" className="h-6 w-6 rounded-md" />
+          <span className="text-sm font-semibold tracking-wide text-neutral-100">ctxpack</span>
+        </header>
+        <div className="overflow-y-auto p-4">{children}</div>
+      </div>
+    </div>
+  );
 }
