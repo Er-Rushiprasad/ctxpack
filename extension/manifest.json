@@ -1,0 +1,19 @@
+{
+  "manifest_version": 3,
+  "name": "Context Packer (dev spike)",
+  "version": "0.0.1",
+  "description": "Spike 2: confirm the extension can fetch the local companion server.",
+  "action": {
+    "default_popup": "popup.html"
+  },
+  "host_permissions": [
+    "http://127.0.0.1:8000/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["https://claude.ai/*"],
+      "js": ["content_spike.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}
