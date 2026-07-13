@@ -30,6 +30,16 @@ export default function BundlePreview({ result }: Props) {
     () => includedFiles.reduce((sum, f) => sum + f.token_count, 0),
     [includedFiles]
   );
+  // Min-max normalized (not just divided by max) so the bars actually show
+  // contrast — RRF fusion scores cluster in a narrow range, so relative-to-
+  // max alone made every file's bar look ~80-100% regardless of how much
+  // less relevant it was.
+  const scoreRange = useMemo(() => {
+    const scores = result.files.map((f) => f.relevance_score);
+    const min = Math.min(...scores);
+    const max = Math.max(...scores);
+    return { min, max: Math.max(max, min + Number.EPSILON) };
+  }, [result.files]);
 
   function toggle(path: string) {
     setExcluded((prev) => {
@@ -95,6 +105,20 @@ export default function BundlePreview({ result }: Props) {
             />
             <span className="min-w-0 flex-1 truncate text-xs" title={f.path}>
               {f.path}
+            </span>
+            <span
+              className="h-1.5 w-10 shrink-0 overflow-hidden rounded-full bg-neutral-800"
+              title={`relevance score: ${f.relevance_score.toFixed(4)}`}
+            >
+              <span
+                className="block h-full rounded-full bg-amber-500"
+                style={{
+                  width: `${Math.max(
+                    4,
+                    ((f.relevance_score - scoreRange.min) / (scoreRange.max - scoreRange.min)) * 100
+                  )}%`,
+                }}
+              />
             </span>
             <span className="shrink-0 text-[10px] text-neutral-500">
               {f.token_count.toLocaleString()}t
